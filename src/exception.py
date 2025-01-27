@@ -27,3 +27,4 @@ if __name__=="__main__":
         logging.info("divide by zero error")
         raise CustomException(e,sys)
     
+    
