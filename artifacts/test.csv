@@ -1,4 +1,4 @@
-ID,Delivery_person_ID,Delivery_person_Age,Delivery_person_Ratings,Restaurant_latitude,Restaurant_longitude,Delivery_location_latitude,Delivery_location_longitude,Order_Date,Time_Orderd,Time_Order_picked,Weather_conditions,Road_traffic_density,Vehicle_condition,Type_of_order,Type_of_vehicle,multiple_deliveries,Festival,City,Time_taken (min)
+ID,Delivery_person_ID,Delivery_person_Age,Delivery_person_Ratings,Restaurant_latitude,Restaurant_longitude,Delivery_location_latitude,Delivery_location_longitude,Order_Date,Time_Orderd,Time_Order_picked,Weather_conditions,Road_traffic_density,Vehicle_condition,Type_of_order,Type_of_vehicle,multiple_deliveries,Festival,City,Time_taken
 0xcfcd,ALHRES08DEL02,32.0,4.1,25.450329,81.834279,25.500329,81.884279,13-02-2022,17:15,17:30,Sandstorms,Medium,0,Snack,motorcycle,1.0,No,Metropolitian,33
 0x4f03,MYSRES17DEL01,32.0,4.9,12.326356,76.619103,12.336356,76.629103,03-03-2022,08:35,08:45,Windy,Low,1,Snack,motorcycle,1.0,No,Metropolitian,28
 0xc48b,DEHRES01DEL01,23.0,4.5,0.0,0.0,0.07,0.07,14-02-2022,21:50,22:05,Sunny,Jam,2,Snack,scooter,1.0,No,Metropolitian,22
