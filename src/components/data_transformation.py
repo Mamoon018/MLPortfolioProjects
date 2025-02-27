@@ -29,16 +29,7 @@ class Datatransformation:
             This functions defines all the steps of transformation we want to implement
             on the data. So, overall we have divided transformation file into 2 things,
             get_data_transfer_obj(self) --> Defining all steps of transformation
-            initiate_data_transformation() --> Executing all the steps of transformation 
-            
-                'ID', 'Delivery_person_ID', 'Delivery_person_Age',
-            'Delivery_person_Ratings', 'Restaurant_latitude',
-            'Restaurant_longitude', 'Delivery_location_latitude',
-            'Delivery_location_longitude', 'Order_Date', 'Time_Orderd',
-            'Time_Order_picked', 'Weather_conditions', 'Road_traffic_density',
-            'Vehicle_condition', 'Type_of_order', 'Type_of_vehicle',
-            'multiple_deliveries', 'Festival', 'City', 'Time_taken (min)'],
-            dtype='object'
+            initiate_data_transformation() --> Executing all the steps of transformation
 
                   """
             try:
@@ -149,3 +140,4 @@ class Datatransformation:
 
             except Exception as e:
                 raise CustomException(e,sys)
+            
