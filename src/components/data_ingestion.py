@@ -23,8 +23,8 @@ class dataingestion:
     def initiate_data_ingestion(self):
         logging.info("Enter the data ingestion method to read the data")
         try:
-            df = pd.read_csv('notebook\data\Zomato.csv')
-            logging.info('Read raw data')
+            df = pd.read_csv('notebook\\data\\Failure.csv') 
+            logging.info('imported and read the raw data')
 
             os.makedirs(os.path.dirname(self.ingestion_config.train_data_path), exist_ok=True)
 
@@ -37,7 +37,7 @@ class dataingestion:
             train_set.to_csv(self.ingestion_config.train_data_path, index = False, header = True)
             test_set.to_csv(self.ingestion_config.test_data_path, index = False, header = True)
 
-            logging.info('ingestion of data completed.')
+            logging.info('Data Ingestion is completed.')
         
             return(
 
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     obj.initiate_data_ingestion()
     train_data, test_data = obj.initiate_data_ingestion()
 
-    data_transformation = Datatransformation()
-    data_transformation.initiate_data_transformation(train_data, test_data)
+    #data_transformation = Datatransformation()
+    #data_transformation.initiate_data_transformation(train_data, test_data)
 
     
