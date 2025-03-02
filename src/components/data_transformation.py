@@ -12,13 +12,111 @@ from sklearn.preprocessing import OneHotEncoder,StandardScaler
 from src.exception import CustomException
 from src.logger import logging
 import os
-
+from sklearn.base import BaseEstimator, TransformerMixin
 from src.utils import save_object
+from datetime import datetime
 
 
 @dataclass
 class datatransformationconfig:
     preprocessor_obj_file_path: str = os.path.join("artifact", "preprocessor.pkl")
+
+
+class feature_enngineering(BaseEstimator, TransformerMixin):
+    def __init__(self, model_column = 'Model', usage_column = 'Usage'):
+          self.model_column = model_column
+          self.usage_column = usage_column
+          
+
+    def fit(self,X,y= None):
+         return self 
+    
+    def transform(self, X, y = None):
+        
+        try:
+        
+            X = X.copy()
+
+            X[f'{self.model_column}_year'] = pd.to_datetime(X[self.model_column]).dt.year
+            current_year = datetime.now().year
+            X['Age_of_car'] = current_year - X[f'{self.model_column}_year']
+
+            usage_map = {
+                'Medium': 20000,
+                'Low': 10000,
+                'High': 30000
+            }
+
+            X['Mileage'] = X[self.usage_column].map(usage_map) * X[f'{self.model_column}_year']
+
+            logging.info("Feature engineering done")
+
+            return X
+        except Exception as e:
+                raise CustomException(e,sys)
+
+
+class DateSplitter(BaseEstimator, TransformerMixin):
+    def __init__(self, date_column):
+        self.date_column = date_column
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+
+        logging.info("splitting date")
+        try:
+            X = X.copy()
+            date_series = pd.to_datetime(X[self.date_column])
+            X[f'{self.date_column}_year'] = date_series.dt.year
+            X[f'{self.date_column}_month'] = date_series.dt.month
+            X.drop(columns=[self.date_column], inplace=True)
+            return X
+
+        except Exception as e:
+                raise CustomException(e,sys)
+
+class outlier_remover(BaseEstimator, TransformerMixin):
+    def __init__(self, factor=1.5):
+         
+         """
+         we will start with initializing the transformer.
+         
+         """
+         self.factor = factor
+         self.lower_limit = None 
+         self.upper_limit = None 
+
+    def fit(self, X, y=None):
+         """
+         we will give fit the formula to calculate 
+         IQR for each numeric column so, that when 
+         we run .fit_transform,
+         """
+
+         Q1 = np.percentile(X,25, axis=0)
+         Q3 = np.percentile(X,75, axis=0)
+
+         IQR = Q3 - Q1
+         self.lower_limit = Q1 - self.factor * IQR 
+         self.upper_limit = Q3 + self.factor * IQR
+         return self 
+    
+    def transform(self, X, y = None):
+
+        logging.info("removing outliers")
+        try:
+            if self.lower_limit is None or self.upper_limit is None:
+                raise ValueError("Outlier has not been fitted yet.")
+            
+            
+            mask = (X >= self.lower_limit) & (X <= self.upper_limit)
+            return X[mask.all(axis=1)]
+            
+        
+        except Exception as e:
+                raise CustomException(e,sys)
 
 class Datatransformation:
     def __init__(self):
@@ -33,13 +131,15 @@ class Datatransformation:
 
                   """
             try:
-                numeric_features = ['Delivery_person_Age', 
-                                    'Delivery_person_Ratings', 'Restaurant_latitude','Restaurant_longitude' ,
-                                    'Delivery_location_latitude', 'Delivery_location_longitude', 
-                                    'Vehicle_condition', 'multiple_deliveries']
-                categorical_features = ['Weather_conditions', 'Road_traffic_density', 
-                                        'Type_of_order', 'Type_of_vehicle', 'Festival', 
-                                        'City']
+
+                numeric_features =  ['Temperature', 
+                                    'RPM', 'Usage','Fuel consumption', 'Mileage', 'Age_of_car',
+                                    ]
+                categorical_features = ['Color', 'Factory', 
+                                        'Membership'
+                                    ]
+                date_column = ['Model']
+                Encoded_features = ['Failure A', 'Failure B', 'Failure C', 'Failure D', 'Failure E']
                 
             # Now, we will define the kind of transformation we want to implement for numerical pipeline 
             # in a single pipeline e.g. Imputing, encoding or we can define function above and include its
@@ -49,7 +149,8 @@ class Datatransformation:
                 num_pipeline = Pipeline( 
                     steps=[            
 
-                        ("imputer", SimpleImputer(strategy='median')), 
+                        ("imputer", SimpleImputer(strategy='median')),
+                        ("outlier_remover", outlier_remover(factor=1.5)), 
                         ("standard_scaler", StandardScaler())
                     ]
                 )
@@ -62,13 +163,24 @@ class Datatransformation:
                     ]
                 )
 
+                date_pipeline = Pipeline(
+                    steps=[
+                        ( "Feature_engineering", feature_enngineering()),
+                        ( "date_splitter", DateSplitter(date_column=date_column)), 
+                        ("standard_scaler", StandardScaler())
+                    ]
+                )
+
+
                 logging.info("Numerical columns standard scaling completed")
                 logging.info("categorical columns encodinng completed")
 
                 preprocessor = ColumnTransformer(
                     [
                     ("num_pipeline", num_pipeline, numeric_features),
-                    ("cat_pipeline", categorical_pipeline, categorical_features)
+                    ("cat_pipeline", categorical_pipeline, categorical_features),
+                    ("date_pipeline", date_pipeline, date_column),
+                    ("Encoded_pass", "passthrough", Encoded_features)
                     
                     ],
                     remainder="drop"
@@ -91,7 +203,7 @@ class Datatransformation:
 
                 preprocessing_obj = self.get_data_transfer_obj()
 
-                target_column_name = 'Time_taken'
+                target_column_name = ['Failure A', 'Failure B', 'Failure C', 'Failure D', 'Failure E'] 
 
                 input_features_train_df = train_df.drop(columns=[target_column_name], axis=1)
                 target_feature_train_df = train_df[target_column_name]
