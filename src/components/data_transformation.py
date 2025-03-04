@@ -15,6 +15,7 @@ import os
 from sklearn.base import BaseEstimator, TransformerMixin
 from src.utils import save_object
 from datetime import datetime
+import re 
 
 
 @dataclass
@@ -36,9 +37,12 @@ class feature_enngineering(BaseEstimator, TransformerMixin):
         try:
         
             X = X.copy()
+            
 
-            X[f'{self.model_column}_year'] = pd.to_datetime(X[self.model_column]).dt.year
-            current_year = datetime.now().year
+            #X[f'{self.model_column}_year'] =  X[self.model_column].str.extract(r'(\d{4})').astype(float)
+            extracted_year = X[self.model_column].str.extract(r'(\d{4})')[0]  # Extract the year as a Series
+            X[f'{self.model_column}_year'] = pd.to_numeric(extracted_year, errors='coerce')
+            current_year = float(datetime.now().year)
             X['Age_of_car'] = current_year - X[f'{self.model_column}_year']
 
             usage_map = {
@@ -49,7 +53,17 @@ class feature_enngineering(BaseEstimator, TransformerMixin):
 
             X['Mileage'] = X[self.usage_column].map(usage_map) * X[f'{self.model_column}_year']
 
+            if 'Temperature' in X.columns:
+                 X['Temperature'] = X['Temperature'].str.replace(' °C', '').str.strip()
+                 X['Temperature'] = pd.to_numeric(X['Temperature'], errors = 'coerce')   # Transformed Temperature column 
+
+            numeric_columns = ['Temperature', 'RPM', 'Fuel consumption', 'Mileage', 'Age_of_car']
+            for col in numeric_columns:
+                if col in X.columns:  # Check if the column exists in the DataFrame
+                    X[col] = pd.to_numeric(X[col], errors='coerce')  # Convert to numeric, coercing errors to NaN
+
             logging.info("Feature engineering done")
+
 
             return X
         except Exception as e:
@@ -67,10 +81,13 @@ class DateSplitter(BaseEstimator, TransformerMixin):
 
         logging.info("splitting date")
         try:
+            
             X = X.copy()
-            date_series = pd.to_datetime(X[self.date_column])
-            X[f'{self.date_column}_year'] = date_series.dt.year
-            X[f'{self.date_column}_month'] = date_series.dt.month
+
+            extracted_year = X[self.date_column].str.extract(r'(\d{4})')[0]  # Extract the year as a Series
+            X[f'{self.date_column}_year'] = pd.to_numeric(extracted_year, errors='coerce')
+
+            
             X.drop(columns=[self.date_column], inplace=True)
             return X
 
@@ -110,9 +127,18 @@ class outlier_remover(BaseEstimator, TransformerMixin):
             if self.lower_limit is None or self.upper_limit is None:
                 raise ValueError("Outlier has not been fitted yet.")
             
-            
-            mask = (X >= self.lower_limit) & (X <= self.upper_limit)
-            return X[mask.all(axis=1)]
+            X_numeric = X.select_dtypes(include=[np.number])
+            if X_numeric.empty:
+                raise ValueError("No numeric columns found for outlier removal.")
+
+            mask = (X_numeric >= self.lower_limit) | (X_numeric <= self.upper_limit)
+            Outlier_free = X[mask.all(axis=1)]
+            if len(Outlier_free) == 0:
+                 
+                return X
+            else: 
+                return Outlier_free
+        
             
         
         except Exception as e:
@@ -133,13 +159,12 @@ class Datatransformation:
             try:
 
                 numeric_features =  ['Temperature', 
-                                    'RPM', 'Usage','Fuel consumption', 'Mileage', 'Age_of_car',
-                                    ]
-                categorical_features = ['Color', 'Factory', 
+                                    'RPM','Fuel consumption', 'Mileage', 'Age_of_car']
+                categorical_features = ['Usage', 'Color', 'Factory', 
                                         'Membership'
                                     ]
-                date_column = ['Model']
-                Encoded_features = ['Failure A', 'Failure B', 'Failure C', 'Failure D', 'Failure E']
+                date_column = 'Model'
+                
                 
             # Now, we will define the kind of transformation we want to implement for numerical pipeline 
             # in a single pipeline e.g. Imputing, encoding or we can define function above and include its
@@ -148,9 +173,8 @@ class Datatransformation:
 
                 num_pipeline = Pipeline( 
                     steps=[            
-
-                        ("imputer", SimpleImputer(strategy='median')),
-                        ("outlier_remover", outlier_remover(factor=1.5)), 
+                        ("outlier_remover", outlier_remover(factor=1.5)),
+                        ("imputer", SimpleImputer(strategy='median')), 
                         ("standard_scaler", StandardScaler())
                     ]
                 )
@@ -165,7 +189,7 @@ class Datatransformation:
 
                 date_pipeline = Pipeline(
                     steps=[
-                        ( "Feature_engineering", feature_enngineering()),
+                        
                         ( "date_splitter", DateSplitter(date_column=date_column)), 
                         ("standard_scaler", StandardScaler())
                     ]
@@ -179,8 +203,7 @@ class Datatransformation:
                     [
                     ("num_pipeline", num_pipeline, numeric_features),
                     ("cat_pipeline", categorical_pipeline, categorical_features),
-                    ("date_pipeline", date_pipeline, date_column),
-                    ("Encoded_pass", "passthrough", Encoded_features)
+                    ("date_pipeline", date_pipeline, [date_column])
                     
                     ],
                     remainder="drop"
@@ -203,12 +226,23 @@ class Datatransformation:
 
                 preprocessing_obj = self.get_data_transfer_obj()
 
-                target_column_name = ['Failure A', 'Failure B', 'Failure C', 'Failure D', 'Failure E'] 
+                target_column_name = ['Failure A','Failure B','Failure C','Failure D','Failure E'] 
 
-                input_features_train_df = train_df.drop(columns=[target_column_name], axis=1)
+                missing_cols = [col for col in target_column_name if col not in train_df.columns]
+                if missing_cols:
+                    raise ValueError(f"Columns missing in train_df: {missing_cols}")
+                
+                """
+                Now, we will ensure that newly created columns are part of test and training dataset.
+                """
+                Calculated_columns = feature_enngineering()
+                train_df = Calculated_columns.fit_transform(train_df)
+                test_df = Calculated_columns.transform(test_df)
+
+                input_features_train_df = train_df.drop(columns=target_column_name, axis=1)
                 target_feature_train_df = train_df[target_column_name]
 
-                input_features_test_df = test_df.drop(columns=[target_column_name], axis=1)
+                input_features_test_df = test_df.drop(columns=target_column_name, axis=1)
                 target_feature_test_df = test_df[target_column_name]
 
                 logging.info("Applying preprocessibg on training and test dataframe")
