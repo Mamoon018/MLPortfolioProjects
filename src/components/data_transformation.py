@@ -17,7 +17,6 @@ from src.utils import save_object
 from datetime import datetime
 import re 
 
-
 @dataclass
 class datatransformationconfig:
     preprocessor_obj_file_path: str = os.path.join("artifact", "preprocessor.pkl")
@@ -30,6 +29,8 @@ class feature_enngineering(BaseEstimator, TransformerMixin):
           
 
     def fit(self,X,y= None):
+         
+
          return self 
     
     def transform(self, X, y = None):
@@ -38,6 +39,14 @@ class feature_enngineering(BaseEstimator, TransformerMixin):
         
             X = X.copy()
             
+            Failure_columns = ['Failure A', 'Failure B', 'Failure C', 'Failure D', 'Failure E']
+            X['failure_type'] = X[Failure_columns].idxmax(axis=1)  # We extract the column name for which we have highest value among these columns
+            X['failure_type'] = X['failure_type'].str.replace('Failure ', '', regex = True)
+            X = X.drop(columns= Failure_columns)
+
+            label_mapping = {'A':0, 'B':1, 'C':2, 'D':3, 'E':4}
+
+            X['failure_type'] = X['failure_type'].map(label_mapping)
 
             #X[f'{self.model_column}_year'] =  X[self.model_column].str.extract(r'(\d{4})').astype(float)
             extracted_year = X[self.model_column].str.extract(r'(\d{4})')[0]  # Extract the year as a Series
@@ -63,6 +72,8 @@ class feature_enngineering(BaseEstimator, TransformerMixin):
                     X[col] = pd.to_numeric(X[col], errors='coerce')  # Convert to numeric, coercing errors to NaN
 
             logging.info("Feature engineering done")
+
+
 
 
             return X
@@ -226,15 +237,18 @@ class Datatransformation:
 
                 preprocessing_obj = self.get_data_transfer_obj()
 
-                target_column_name = ['Failure A','Failure B','Failure C','Failure D','Failure E'] 
+                target_column_name = 'failure_type'
+                
+                #target_column_name = ['Failure A','Failure B','Failure C','Failure D','Failure E'] 
 
-                missing_cols = [col for col in target_column_name if col not in train_df.columns]
-                if missing_cols:
-                    raise ValueError(f"Columns missing in train_df: {missing_cols}")
+                #missing_cols = [col for col in target_column_name if col not in train_df.columns]
+                #if missing_cols:
+                    #raise ValueError(f"Columns missing in train_df: {missing_cols}")
                 
                 """
                 Now, we will ensure that newly created columns are part of test and training dataset.
                 """
+
                 Calculated_columns = feature_enngineering()
                 train_df = Calculated_columns.fit_transform(train_df)
                 test_df = Calculated_columns.transform(test_df)

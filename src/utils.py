@@ -5,6 +5,7 @@ import sys
 import numpy as np 
 import pandas as pd 
 import pickle
+from sklearn.metrics import accuracy_score
 
 from src.exception import CustomException
 
@@ -19,3 +20,28 @@ def save_object(file_path, obj):
 
     except Exception as e:
         raise CustomException(e, sys)
+    
+
+def evaluate_models(x_train,y_train, x_test,y_test,models):
+    try:
+        report = {}
+
+        for i in range(len(list(models))): 
+            model = list(models.values())[i] #pick model 
+
+            model.fit(x_train,y_train) # train model 
+            
+            y_train_predict = model.predict(x_train)
+
+            y_test_predict = model.predict(x_test)
+
+            train_model_score = accuracy_score(y_train,y_train_predict)
+
+            test_model_score = accuracy_score(y_test,y_test_predict)
+
+            report[list(models.keys())[i]] = test_model_score
+        
+        return report
+    except Exception as e:
+        raise CustomException(e,sys)
+
