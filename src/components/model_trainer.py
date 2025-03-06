@@ -14,7 +14,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-from xgboost import XGBClassifier 
+from xgboost import XGBClassifier
+from sklearn.multioutput import MultiOutputClassifier 
 
 from src.exception import CustomException
 from src.logger import logging
@@ -58,8 +59,76 @@ class ModelTrainer:
 
             }
 
+            tuning_parameters = {
+
+                "K-Neighbours Classifier": {
+                    'n_neighbors': [3,5,7,10,15],
+                    #'weights': ['uniform', 'distance'],
+                    #'p': [1,2]
+
+                },
+            
+                "XGB Classifier": {
+                    'n_estimators': [8,16,32,64,128,256],
+                    'learning_rate': [0.1,0.01,0.05,0.001],
+                    #'max_depth': [3,5,7,10],
+                    #'subsample':[0.6,0.7,0.8,0.9,1.0],
+                    #'colsample_bytree': [0.6,0.7,0.8,0.9,1.0],
+                    #'objective': ['binary:logistic']
+
+                },
+
+                "CatBoosting Classifier": {
+
+                    'iterations': [30,50,100],
+                    'learning_rate': [0.01,0.05,0.1],
+                    #'depth':[6,8,10],
+                    #'l2_leaf_reg':[1,3,5,7,9],
+                    #'border_count':[32,64,128]
+                },
+
+                "Adaboost Classifier":{
+
+                    'n_estimators': [8,16,32,64,128,256],
+                    'learning_rate': [0.1,0.01,0.5,0.001],
+                    
+                },
+
+                "Gradient Boosting": {
+
+                    #'n_estimators': [8,16,32,64,128,256],
+                    'learning_rate': [0.1,0.01, 0.05,0.001],
+                    #'subsample': [0.6,0.7,0.75,0.8,0.85,0.9],
+                    #'max_depth': [3,5,7,10],
+                    #'min_samples_leaf': [1,2,4]
+                },
+
+                "Random Forest": {
+
+                    'n_estimators': [8,16,32,64,128,256],
+                    #'criterion': ['gini', 'entropy'],
+                    #'max_depth': [None, 10, 20, 30,40, 50],
+                    #'min_samples_split': [2,5,10],
+                    #'min_samples_leaf': [1,2,4],
+                    #'max_features': ['sqrt','log2', None]
+                },
+
+                "Decision Tree": {
+
+
+                    'criterion': ['gini','entropy'],
+                    #'splitter': ['best', 'random'],
+                    #'max_depth': [None, 10,20,30,40,50],
+                    #'min_samples_split': [2,5,10],
+                    #'min_samples_leaf': [1,2,4],
+                    #'max_features': ['sqrt', 'log2', None]
+                }
+
+            }
+
+
             model_report:dict= evaluate_models(x_train = X_train, y_train= Y_train, x_test=X_test, y_test=Y_test, 
-                                              models=ML_models)
+                                              models=ML_models, param= tuning_parameters )
             
             ## We will extract the best model score from report
 
@@ -89,3 +158,4 @@ class ModelTrainer:
 
         except Exception as e:
             raise CustomException(e,sys)
+        
